@@ -30,11 +30,9 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fab/events/deliverclient/seek"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"unicode/utf8"
-	"unsafe"
 )
 
 const NOT_FOUND_ERR = "not found"
@@ -57,23 +55,22 @@ func Explore(fab *models.Fabex) error {
 	}
 
 	if txs == nil {
-
 		// find latest tx in db
 		lastTx, err := fab.Db.GetLastEntry()
 		if err != nil && err.Error() != NOT_FOUND_ERR {
 			return errors.Wrap(err, "Can't to get last block")
 		}
 
-		if err != nil && err.Error() == NOT_FOUND_ERR {
-			lastTx.Blocknum = 0
+		// set blocks listener from latest saved in db blockchain height+1
+		var blockNumber uint64
+		if lastTx.Hash != "" {
+			blockNumber = lastTx.Blocknum + 1
 		}
-
-		// set blocks listener from latest saved in db blockchain height
 		eventClient, err := event.New(
 			fab.ChannelContext,
 			event.WithBlockEvents(),
 			event.WithSeekType(seek.FromBlock),
-			event.WithBlockNum(lastTx.Blocknum+1), // increment for fetching next (after last added to DB) block from ledger
+			event.WithBlockNum(blockNumber), // increment for fetching next (after last added to DB) block from ledger
 		)
 		if err != nil {
 			return errors.Wrap(err, "event service error")
@@ -87,7 +84,7 @@ func Explore(fab *models.Fabex) error {
 		for {
 			blockEvent := <-notifier
 
-			customBlock, err := blockhandler.HandleBlock((*common.Block)(unsafe.Pointer(blockEvent.Block)))
+			customBlock, err := blockhandler.HandleBlock(blockEvent.Block)
 			if err != nil {
 				return errors.Wrap(err, "GetBlock error")
 			}
@@ -131,14 +128,8 @@ func EnrollUser(sdk *fabsdk.FabricSDK, user, secret string) error {
 	return nil
 }
 
-func QueryChannelConfig(ledgerClient *ledger.Client) error {
-	resp, err := ledgerClient.QueryConfig()
-	if err != nil {
-		return errors.Wrap(err, "Failed to queryConfig")
-	}
-	log.Printf("ChannelID: %v\nChannel Orderers: %v\nChannel Versions: %v\n", resp.ID(), resp.Orderers(), resp.Versions())
-
-	return nil
+func QueryChannelConfig(ledgerClient *ledger.Client) (fab.ChannelCfg, error) {
+	return ledgerClient.QueryConfig()
 }
 
 func QueryChannelInfo(ledgerClient *ledger.Client) (*fab.BlockchainInfoResponse, error) {
@@ -170,14 +161,15 @@ func PackTxsToBlocks(blocks []db.Tx) ([]models.Block, error) {
 		tx.Txid = in.Txid
 		tx.ValidationCode = in.ValidationCode
 
-		var ccData []models.Chaincode
-		err := json.Unmarshal([]byte(in.Payload), &ccData)
+		var ccData []models.WriteKV
+
+		err := json.Unmarshal(in.Payload, &ccData)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, item := range ccData {
-			tx.KV = append(tx.KV, models.KV{item.Key, item.Value})
+			tx.KV = append(tx.KV, models.WriteKV{item.Key, item.Value})
 		}
 
 		block.Txs = append(block.Txs, tx)

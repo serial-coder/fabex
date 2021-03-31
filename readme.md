@@ -1,13 +1,15 @@
 ![](https://github.com/hyperledger-labs/fabex/workflows/build/badge.svg) ![](https://github.com/hyperledger-labs/fabex/workflows/unit-tests/badge.svg) 
 
 <p align="center">
-<img src="https://github.com/vadiminshakov/fabex/blob/1.x/fabex.png">
+<img src="https://github.com/hyperledger-labs/fabex/blob/2.x/fabex.png">
 </p>
 
 ## **Block explorer for Hyperledger Fabric**
 <br>
 
 ### Reference
+
+[Tutorial](#tutorial)
 
 [Prerequisites](#prerequisites)
 
@@ -24,6 +26,9 @@
 ##### _FabEx is inspired by [ledgerfsck](https://github.com/C0rWin/ledgerfsck)_
 
 <br>
+
+### <a name="tutorial">**Tutorial**</a>
+the tutorial is available at [this link](https://medium.com/@vadiminshakov/fabex-tutorial-an-introduction-to-the-right-hyperledger-fabric-explorer-cd9ee1848cd9).
 
 ### <a name="prerequisites">**Prerequisites**</a>
 
@@ -69,7 +74,7 @@ Use [fabex.proto](https://github.com/hyperledger-labs/fabex/blob/master/proto/fa
 
 UI is available on port 5252
 
-![UI](https://github.com/hyperledger-labs/fabex/blob/1.x/ui.png)
+![UI](https://github.com/hyperledger-labs/fabex/blob/2.x/ui.png)
 
 <br><br>
  
@@ -114,6 +119,3 @@ You can choose database for data saving and retrieving with `-db flag` (MongoDB 
 unit tests: `make unit-tests`
 
 integration tests: `make integration-tests`
-
-<br>
-

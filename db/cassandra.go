@@ -91,7 +91,7 @@ func (c *Cassandra) Insert(tx Tx) error {
 		CHANNEL_ID, TXID, HASH, PREVIOUS_HASH, BLOCKNUM, PAYLOAD, VALIDATION_CODE, TIME, PAYLOADKEYS)
 
 	var Payload []RW
-	err := json.Unmarshal([]byte(tx.Payload), &Payload)
+	err := json.Unmarshal(tx.Payload, &Payload)
 	if err != nil {
 		return err
 	}
@@ -181,21 +181,23 @@ func (c *Cassandra) GetLastEntry() (Tx, error) {
 }
 
 func (c *Cassandra) getByFilter(sel string, filter string) ([]Tx, error) {
-	var tx Tx
 	var txs []Tx
-	var it *gocql.Iter
+	var sc gocql.Scanner
 	if filter != "" {
-		it = c.Session.Query(fmt.Sprintf("%s ALLOW FILTERING", sel), filter).Iter()
+		sc = c.Session.Query(fmt.Sprintf("%s ALLOW FILTERING", sel), filter).Iter().Scanner()
 	} else {
-		it = c.Session.Query(fmt.Sprintf("%s", sel)).Iter()
+		sc = c.Session.Query(fmt.Sprintf("%s", sel)).Iter().Scanner()
 	}
-	for it.Scan(&tx.ChannelId, &tx.Txid, &tx.Hash, &tx.PreviousHash, &tx.Blocknum,
-		&tx.Payload, &tx.ValidationCode, &tx.Time) {
+	for sc.Next() {
+		var tx Tx
+		if err := sc.Scan(&tx.ChannelId, &tx.Txid, &tx.Hash, &tx.PreviousHash, &tx.Blocknum,
+			&tx.Payload, &tx.ValidationCode, &tx.Time); err != nil {
+			return nil, err
+		}
 		txs = append(txs, tx)
 	}
-	if err := it.Close(); err != nil {
+	if err := sc.Err(); err != nil {
 		return nil, err
 	}
 	return txs, nil
-
 }
